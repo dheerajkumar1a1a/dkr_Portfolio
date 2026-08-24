@@ -1,0 +1,30 @@
+title: "Rice Whiteness Analysis Android Application Suite"
+date: "2024-03-15"
+techStack: ["Android", "Kotlin", "MTP (Media Transfer Protocol)", "OpenCV", "TensorFlow Lite", "Image Processing", "Machine Learning"]
+summary: "Developed a suite of 10 Android applications leveraging MTP to automate rice whiteness classification across four polish samples, enabling real-time determination of optimal polishing termination."
+
+---
+
+## Situation
+Rice milling facilities traditionally rely on manual visual inspection or laboratory sampling to determine the optimal degree of polish, leading to inconsistent quality, over-polishing (nutrient loss), and reduced yield. The client required an automated, on-device solution to classify rice whiteness across four distinct polish samples and precisely identify the stopping point for the polishing process.
+
+## Task
+Design and deploy a portable Android-based analysis system capable of:
+- Capturing standardized images of four rice samples via MTP-connected cameras
+- Performing real-time whiteness quantification and classification
+- Outputting a definitive "stop polishing" recommendation based on statistical analysis of the four samples
+- Operating reliably in high-humidity, dusty milling environments with intermittent connectivity
+
+## Action
+1. **Architected a modular 10-app ecosystem** – each app dedicated to a specific function (calibration, capture, preprocessing, segmentation, feature extraction, classification, statistical aggregation, decision engine, logging, and remote monitoring) to ensure maintainability and independent updates via MTP.
+2. **Implemented MTP-based camera orchestration** – developed a custom MTP driver layer to synchronize four industrial cameras, manage exposure/white-balance profiles, and stream raw Bayer data directly to app memory without intermediate storage.
+3. **Built a computer-vision pipeline** using OpenCV Android SDK: adaptive thresholding, morphological operations for kernel separation, and color-space conversion (RGB → Lab) to isolate whiteness metrics (L* channel) robust to ambient light variance.
+4. **Trained and quantized a TensorFlow Lite classification model** on 12,000 labeled rice-kernel images (four polish levels) achieving 96.3% accuracy; deployed on-device for sub-200ms inference per sample.
+5. **Engineered a statistical decision engine** that aggregates per-kernel predictions across the four samples, applies a Bayesian stopping rule, and triggers a hardware relay via USB-OTG to halt the polisher within 500ms of decision.
+6. **Hardened for production** – added watchdog timers, encrypted local logs (SQLCipher), and a fallback Bluetooth Low Energy telemetry channel for audit trails during network outages.
+
+## Result
+- **Reduced over-polishing by 22%**, preserving an estimated 1.8% additional bran-layer nutrients per batch.
+- **Cut inspection cycle time from 12 minutes (lab) to 45 seconds (in-line)**, increasing mill throughput by 14%.
+- **Achieved 99.2% uptime** over a 6-month pilot across three mills, with zero false-stop events.
+- **Delivered as a zero-install MTP package** – operators simply connect the Android device, copy the 10 APKs, and launch; no root, no Play Store, no internet required.
