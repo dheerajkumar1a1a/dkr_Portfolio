@@ -13,6 +13,12 @@ export default function AdminPortal() {
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<string[]>([]);
+  const [originalNotes, setOriginalNotes] = useState("");
+  const [isInterviewMode, setIsInterviewMode] = useState(false);
+
+  const busy = status === "loading";
 
   const close = useCallback(() => {
     setOpen(false);
@@ -20,6 +26,10 @@ export default function AdminPortal() {
     if (status === "success") {
       setNotes("");
       setPassword("");
+      setQuestions([]);
+      setAnswers([]);
+      setOriginalNotes("");
+      setIsInterviewMode(false);
       setStatus("idle");
     }
   }, [status]);
@@ -37,39 +47,85 @@ export default function AdminPortal() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [close]);
 
+  const setAnswer = (index: number, value: string) => {
+    setAnswers((prev) => prev.map((answer, i) => (i === index ? value : answer)));
+  };
+
+  const parseResponse = async (
+    res: Response
+  ): Promise<{ needsAnswers: boolean; questions?: string[] }> => {
+    const data: unknown = await res.json().catch(() => null);
+
+    if (typeof data !== "object" || data === null) {
+      throw new Error(`Request failed (${res.status})`);
+    }
+
+    const result = data as {
+      status?: unknown;
+      message?: unknown;
+      questions?: unknown;
+    };
+
+    if (res.ok && result.status === "needs_answers") {
+      if (!Array.isArray(result.questions)) {
+        throw new Error("Server requested answers but sent no questions.");
+      }
+      const parsedQuestions = result.questions.filter(
+        (q): q is string => typeof q === "string"
+      );
+      if (parsedQuestions.length === 0) {
+        throw new Error("Server requested answers but sent no valid questions.");
+      }
+      return { needsAnswers: true, questions: parsedQuestions };
+    }
+
+    if (res.ok && result.status === "success") {
+      return { needsAnswers: false };
+    }
+
+    throw new Error(
+      typeof result.message === "string"
+        ? result.message
+        : `Request failed (${res.status})`
+    );
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setStatus("loading");
     setMessage("");
 
+    const payload = isInterviewMode
+      ? { originalNotes, questions, answers, password }
+      : { notes, password };
+
     try {
       const res = await fetch(WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes, password }),
+        body: JSON.stringify(payload),
       });
 
-      const data: unknown = await res.json().catch(() => null);
-      const succeeded =
-        res.ok &&
-        typeof data === "object" &&
-        data !== null &&
-        (data as { status?: unknown }).status === "success";
+      const parsed = await parseResponse(res);
 
-      if (!succeeded) {
-        const serverMessage =
-          typeof data === "object" &&
-          data !== null &&
-          typeof (data as { message?: unknown }).message === "string"
-            ? (data as { message: string }).message
-            : `Request failed (${res.status})`;
-        throw new Error(serverMessage);
+      if (parsed.needsAnswers && parsed.questions) {
+        setQuestions(parsed.questions);
+        setAnswers(new Array(parsed.questions.length).fill(""));
+        setOriginalNotes((prev) => (isInterviewMode ? prev : notes));
+        setIsInterviewMode(true);
+        setStatus("idle");
+        setMessage("");
+        return;
       }
 
       setStatus("success");
       setMessage("Success! Reload the page in ~30 seconds to see your new post.");
       setNotes("");
       setPassword("");
+      setQuestions([]);
+      setAnswers([]);
+      setOriginalNotes("");
+      setIsInterviewMode(false);
     } catch (err) {
       setStatus("error");
       setMessage(err instanceof Error ? err.message : "Something went wrong.");
@@ -78,7 +134,8 @@ export default function AdminPortal() {
 
   if (!open) return null;
 
-  const busy = status === "loading";
+  const inputClasses =
+    "w-full rounded-lg border border-cardBorder bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-zinc-500 focus:border-accent disabled:opacity-50";
 
   return (
     <div
@@ -86,24 +143,61 @@ export default function AdminPortal() {
       onClick={close}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-cardBorder bg-cardBg p-8 text-white shadow-2xl backdrop-blur-xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-cardBorder bg-cardBg p-8 text-white shadow-2xl backdrop-blur-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-semibold">Deployment Pipeline</h2>
+        <h2 className="text-lg font-semibold">
+          {isInterviewMode ? "Almost There" : "Deployment Pipeline"}
+        </h2>
         <p className="mt-1 mb-6 text-xs text-zinc-400">
-          AI will automatically structure these raw notes.
+          {isInterviewMode
+            ? "Answer the questions below so the AI can finish structuring your entry."
+            : "AI will automatically structure these raw notes."}
         </p>
 
+        {isInterviewMode && (
+          <div className="mb-5 rounded-lg border border-accent/20 bg-accent/10 px-4 py-3 text-xs leading-relaxed text-blue-200">
+            Interview mode — {questions.length} question
+            {questions.length === 1 ? "" : "s"} pending.
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g., Upgraded the Android app architecture using Gradle 9.5..."
-            required
-            disabled={busy}
-            rows={5}
-            className="mb-4 w-full resize-y rounded-lg border border-cardBorder bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-zinc-500 focus:border-accent disabled:opacity-50"
-          />
+          {!isInterviewMode && (
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g., Upgraded the Android app architecture using Gradle 9.5..."
+              required
+              disabled={busy}
+              rows={5}
+              className={`${inputClasses} mb-4 resize-y`}
+            />
+          )}
+
+          {isInterviewMode &&
+            questions.map((question, index) => (
+              <div key={`${index}-${question}`} className="mb-4">
+                <label
+                  htmlFor={`interview-question-${index}`}
+                  className="mb-1.5 block text-xs font-medium leading-relaxed text-zinc-200"
+                >
+                  <span className="mr-1 text-accent">{index + 1}.</span>
+                  {question}
+                </label>
+                <textarea
+                  id={`interview-question-${index}`}
+                  value={answers[index] ?? ""}
+                  onChange={(e) => setAnswer(index, e.target.value)}
+                  placeholder="Your answer…"
+                  required
+                  disabled={busy}
+                  rows={2}
+                  className={`${inputClasses} resize-y`}
+                />
+              </div>
+            ))}
+
           <input
             type="password"
             value={password}
@@ -111,14 +205,19 @@ export default function AdminPortal() {
             placeholder="Admin Password"
             required
             disabled={busy}
-            className="mb-4 w-full rounded-lg border border-cardBorder bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-zinc-500 focus:border-accent disabled:opacity-50"
+            className={`${inputClasses} mb-4`}
           />
+
           <button
             type="submit"
             disabled={busy}
             className="w-full cursor-pointer rounded-lg bg-accent px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {busy ? "Processing…" : "Process & Deploy"}
+            {busy
+              ? "Processing…"
+              : isInterviewMode
+                ? "Submit Answers & Deploy"
+                : "Process & Deploy"}
           </button>
           <button
             type="button"
