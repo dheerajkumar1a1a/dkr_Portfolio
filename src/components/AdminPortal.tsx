@@ -95,9 +95,19 @@ export default function AdminPortal() {
     setStatus("loading");
     setMessage("");
 
-    const payload = isInterviewMode
-      ? { originalNotes, questions, answers, password }
-      : { notes, password };
+    const combinedNotes = isInterviewMode
+      ? `
+ORIGINAL PROJECT NOTES:
+${originalNotes}
+
+INTERVIEW CLARIFICATIONS & METRICS:
+${questions
+  .map((q, i) => `Question: ${q}\nAnswer: ${answers[i] || "N/A"}`)
+  .join("\n\n")}
+`.trim()
+      : notes;
+
+    const payload = { notes: combinedNotes, password };
 
     try {
       const res = await fetch(WEBHOOK_URL, {
