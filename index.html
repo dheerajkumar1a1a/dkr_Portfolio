@@ -6,65 +6,174 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dheeraj Kumar - Portfolio</title>
+    <!-- Import Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; background: #f9fafb; color: #111827; }
-        .project-card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 2rem; }
-        .project-card h3 { margin-top: 0; color: #111827; }
-        .project-card h4 { color: #374151; margin-bottom: 0.5rem; }
-        .tech-stack { font-size: 0.875rem; color: #4b5563; background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; }
+        /* Root Variables for Modern Dark Theme */
+        :root {
+            --bg-base: #09090b;
+            --card-bg: rgba(24, 24, 27, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.15);
+        }
+
+        body { 
+            font-family: 'Inter', system-ui, sans-serif; 
+            background-color: var(--bg-base); 
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.05), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(147, 51, 234, 0.05), transparent 25%);
+            color: var(--text-main); 
+            margin: 0;
+            padding: 4rem 2rem;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Sleek Header */
+        header { margin-bottom: 5rem; text-align: center; }
+        h1 { 
+            font-size: 3rem; 
+            font-weight: 600; 
+            margin: 0 0 0.5rem 0; 
+            letter-spacing: -0.05em;
+            background: linear-gradient(to right, #ffffff, #a1a1aa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        header p { color: var(--text-muted); font-size: 1.125rem; font-weight: 300; margin: 0; }
+
+        /* Project Grid */
+        #portfolio-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+        }
+
+        /* Glassmorphism Cards */
+        .project-card { 
+            background: var(--card-bg); 
+            padding: 2rem; 
+            border-radius: 16px; 
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
         
-        /* Hidden Admin Panel Styles */
-        #admin-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 90%; max-width: 500px; z-index: 1000; }
-        #admin-panel.visible { display: block; }
-        .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
+        .project-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 20px var(--accent-glow);
+        }
+
+        .project-card h3 { 
+            margin-top: 0; 
+            font-size: 1.25rem; 
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
+
+        /* Tech Stack Tags */
+        .tech-stack { 
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem; 
+            color: #60a5fa; 
+            background: rgba(59, 130, 246, 0.1); 
+            padding: 0.5rem 0.75rem; 
+            border-radius: 6px; 
+            margin: 0.5rem 0 1.5rem 0;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            display: inline-block; 
+        }
+
+        .summary { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem; }
+        
+        hr { border: 0; border-top: 1px solid var(--card-border); margin: 0 0 1.5rem 0; }
+
+        /* Markdown Styling injected by AI */
+        .markdown-body { font-size: 0.9rem; color: #d4d4d8; }
+        .markdown-body h4 { color: #f4f4f5; margin: 1.25rem 0 0.5rem 0; font-weight: 500; }
+        .markdown-body p { margin-top: 0; }
+        .markdown-body ul { padding-left: 1.25rem; margin-top: 0.5rem; }
+        .markdown-body li { margin-bottom: 0.25rem; }
+
+        /* Admin Panel - Frosted Overlay */
+        .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 999; }
         .overlay.visible { display: block; }
         
-        input, textarea, button { width: 100%; margin-bottom: 1rem; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
-        textarea { height: 150px; resize: vertical; }
-        .primary-btn { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: 600; }
-        .primary-btn:hover { background: #1d4ed8; }
-        .close-btn { background: #ef4444; color: white; border: none; cursor: pointer; font-weight: 600; margin-top: 0.5rem; }
+        #admin-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #18181b; padding: 2.5rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); width: 90%; max-width: 500px; z-index: 1000; }
+        #admin-panel.visible { display: block; }
+        #admin-panel h3 { margin: 0 0 0.5rem 0; }
+        
+        input, textarea, button { width: 100%; margin-bottom: 1rem; padding: 0.875rem; background: #09090b; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; font-family: 'Inter', sans-serif; box-sizing: border-box; outline: none; transition: border-color 0.2s; }
+        input:focus, textarea:focus { border-color: var(--accent); }
+        textarea { height: 120px; resize: vertical; }
+        
+        .primary-btn { background: var(--accent); color: white; border: none; cursor: pointer; font-weight: 500; font-size: 1rem; transition: background 0.2s; }
+        .primary-btn:hover { background: #2563eb; }
+        .close-btn { background: transparent; color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; margin-top: 0; transition: color 0.2s; }
+        .close-btn:hover { color: white; background: rgba(255,255,255,0.05); }
+
+        /* Mobile adjustments */
+        @media (max-width: 600px) {
+            #portfolio-content { grid-template-columns: 1fr; }
+            body { padding: 2rem 1rem; }
+            h1 { font-size: 2.25rem; }
+        }
     </style>
 </head>
 <body>
+    <div class="container">
+        <header>
+            <h1>Dheeraj Kumar</h1>
+            <p>Data Science & Automation Engineer</p>
+        </header>
 
-    <header style="margin-bottom: 3rem;">
-        <h1>Dheeraj Kumar</h1>
-        <p>Data Science & Automation Engineer</p>
-    </header>
-
-    <main id="portfolio-content">
-        <!-- GitHub Pages will automatically loop through your _posts folder and inject them here -->
-        {% for post in site.posts %}
-        <div class="project-card">
-            <h3>{{ post.title }}</h3>
-            
-            <p class="tech-stack"><strong>Tech Stack:</strong> {{ post.techStack | join: ", " }}</p>
-            <p style="color: #4b5563; font-style: italic;">{{ post.summary }}</p>
-            
-            <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
-            
-            <!-- This automatically converts your AI's STAR markdown into clean HTML -->
-            <div class="markdown-body">
-                {{ post.content }}
+        <main id="portfolio-content">
+            {% for post in site.posts %}
+            <div class="project-card">
+                <h3>{{ post.title }}</h3>
+                <div>
+                    <span class="tech-stack">{{ post.techStack | join: " • " }}</span>
+                </div>
+                <p class="summary">{{ post.summary }}</p>
+                
+                <hr>
+                
+                <div class="markdown-body">
+                    {{ post.content }}
+                </div>
             </div>
-        </div>
-        {% endfor %}
+            {% endfor %}
 
-        <!-- Fallback if no projects exist in the _posts folder yet -->
-        {% if site.posts.size == 0 %}
-        <div class="project-card">
-            <h3>No projects yet</h3>
-            <p>Use the secret Admin panel to submit your first project through the n8n AI pipeline.</p>
-        </div>
-        {% endif %}
-    </main>
+            {% if site.posts.size == 0 %}
+            <div class="project-card" style="text-align: center; border-style: dashed;">
+                <h3 style="color: var(--text-muted);">Awaiting Data</h3>
+                <p class="summary">Use the secure pipeline to format and deploy your first project architecture.</p>
+            </div>
+            {% endif %}
+        </main>
+    </div>
 
     <!-- Hidden Admin UI -->
     <div class="overlay" id="overlay"></div>
     <div id="admin-panel">
-        <h3 style="margin-top: 0;">Add New Project</h3>
-        <p style="font-size: 0.875rem; color: #6b7280;">AI will automatically format these notes.</p>
+        <h3>Deployment Pipeline</h3>
+        <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem;">AI will automatically structure these raw notes.</p>
         
         <form id="project-form">
             <!-- Points to your active n8n production webhook URL -->
@@ -77,7 +186,7 @@
             <button type="submit" id="submit-btn" class="primary-btn">Process & Deploy</button>
             <button type="button" class="close-btn" id="close-admin">Cancel</button>
         </form>
-        <p id="status-message" style="text-align: center; margin-top: 1rem; font-weight: bold;"></p>
+        <p id="status-message" style="text-align: center; margin-top: 1rem; font-weight: 500; font-size: 0.875rem;"></p>
     </div>
 
     <script>
@@ -86,11 +195,11 @@
         const form = document.getElementById('project-form');
         const statusMsg = document.getElementById('status-message');
 
-        // Open panel with secret shortcut (Ctrl + Shift + A)
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.shiftKey && e.key === 'A') {
                 adminPanel.classList.add('visible');
                 overlay.classList.add('visible');
+                document.getElementById('raw-notes').focus();
             }
         });
 
@@ -123,14 +232,14 @@
                 const result = await response.json();
 
                 if (response.ok && result.status === 'success') {
-                    statusMsg.style.color = 'green';
+                    statusMsg.style.color = '#34d399'; // Emerald green
                     statusMsg.textContent = 'Success! Reload the page in ~30 seconds to see the new project.';
                     form.reset();
                 } else {
                     throw new Error(result.message || 'Authentication failed or server error.');
                 }
             } catch (error) {
-                statusMsg.style.color = 'red';
+                statusMsg.style.color = '#f87171'; // Red
                 statusMsg.textContent = 'Error: ' + error.message;
             } finally {
                 submitBtn.textContent = 'Process & Deploy';
