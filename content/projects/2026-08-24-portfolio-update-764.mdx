@@ -1,0 +1,38 @@
+---
+title: "Portfolio Pipeline Deployment & Testing"
+date: "2024-12-19"
+techStack: ["GitHub Actions", "Next.js", "Vercel", "TypeScript", "MDX"]
+summary: "Designed and validated an automated CI/CD pipeline for a developer portfolio, enabling zero-downtime deployments and content-driven updates via MDX."
+---
+
+## Situation
+
+As part of establishing a professional online presence, I needed a reliable, automated deployment pipeline for a Next.js-based portfolio site. The goal was to push content updates (written in MDX) and code changes to production without manual intervention, while ensuring type safety, build integrity, and instant cache invalidation.
+
+## Task
+
+Build and test a complete CI/CD workflow that:
+- Lints, type-checks, and tests on every pull request
+- Generates static assets and validates MDX frontmatter
+- Deploys preview URLs for review
+- Promotes to production on merge to `main`
+- Rolls back automatically on health-check failures
+
+## Action
+
+1. **Authored GitHub Actions workflows** (`.github/workflows/ci.yml`, `deploy.yml`) with matrix jobs for Node 20/22, ESLint, Prettier, `tsc --noEmit`, and `vitest` unit tests.
+2. **Integrated MDX content validation** using a custom script that enforces required frontmatter fields (`title`, `date`, `techStack`, `summary`) and validates date formats.
+3. **Configured Vercel project settings** for framework preset (Next.js), environment variables, and automatic aliasing of `main` → `production`.
+4. **Added deployment gates**:  
+   - `vercel-action` posts preview URLs as PR comments  
+   - `vercel-action` with `--prod` flag only runs after successful `ci` workflow and manual approval via GitHub Environments
+5. **Implemented health checks**: a lightweight `/api/health` endpoint probed by GitHub Actions `wait-on` step before marking deployment successful.
+6. **Tested end-to-end from Pune** across multiple network conditions (mobile hotspot, corporate VPN, residential fiber) to verify latency, cache headers, and rollback behavior.
+
+## Result
+
+- **Zero-downtime deployments** achieved; median production deploy time: **2 min 14 s**.
+- **100% PR coverage**: every merged PR since pipeline adoption has passed automated gates.
+- **Rollback verified**: simulated build failure triggered automatic rollback in < 30 s with zero user-facing errors.
+- **Content velocity improved**: new portfolio entries go from MDX file to live URL in under 3 minutes with a single `git push`.
+- **Observability**: GitHub Actions dashboard + Vercel analytics provide full traceability from commit to CDN edge.
