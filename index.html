@@ -1,5 +1,4 @@
 ---
-# This empty frontmatter tells GitHub Pages to automatically process this file and read your markdown posts
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -29,12 +28,9 @@
 </head>
 <body>
 
-    <header style="position: relative; margin-bottom: 3rem;">
+    <header style="margin-bottom: 3rem;">
         <h1>Dheeraj Kumar</h1>
         <p>Data Science & Automation Engineer</p>
-        
-        <!-- Visible Admin Login Button -->
-        <button id="open-admin-btn" style="position: absolute; top: 0; right: 0; width: auto; background: transparent; color: #9ca3af; border: none; cursor: pointer; font-size: 0.875rem;">Admin Login</button>
     </header>
 
     <main id="portfolio-content">
@@ -59,7 +55,7 @@
         {% if site.posts.size == 0 %}
         <div class="project-card">
             <h3>No projects yet</h3>
-            <p>Use the Admin Login to submit your first project through the n8n AI pipeline.</p>
+            <p>Use the secret Admin panel to submit your first project through the n8n AI pipeline.</p>
         </div>
         {% endif %}
     </main>
@@ -71,7 +67,7 @@
         <p style="font-size: 0.875rem; color: #6b7280;">AI will automatically format these notes.</p>
         
         <form id="project-form">
-            <!-- Ensure this points to your active n8n production webhook URL -->
+            <!-- Points to your active n8n production webhook URL -->
             <input type="hidden" id="webhook-url" value="https://n8n-sh-dkr.duckdns.org/webhook/portfolio-update">
             
             <textarea id="raw-notes" placeholder="e.g., Upgraded the Android app architecture using Gradle 9.5 and AGP 9.3..." required></textarea>
@@ -89,12 +85,6 @@
         const overlay = document.getElementById('overlay');
         const form = document.getElementById('project-form');
         const statusMsg = document.getElementById('status-message');
-
-        // Open panel with the visible button
-        document.getElementById('open-admin-btn').addEventListener('click', () => {
-            adminPanel.classList.add('visible');
-            overlay.classList.add('visible');
-        });
 
         // Open panel with secret shortcut (Ctrl + Shift + A)
         document.addEventListener('keydown', (e) => {
