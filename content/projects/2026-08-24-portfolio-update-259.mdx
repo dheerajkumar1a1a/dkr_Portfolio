@@ -1,0 +1,51 @@
+title: "Portfolio CI/CD Pipeline Implementation"
+date: "2025-04-09"
+techStack: ["GitHub Actions", "Vercel", "Next.js", "TypeScript", "ESLint", "Prettier"]
+summary: "Designed and deployed a fully automated CI/CD pipeline for a personal portfolio website, enabling zero-downtime deployments and automated quality gates."
+
+---
+
+## Situation
+
+While building my personal portfolio website using Next.js and TypeScript, I needed a reliable, automated deployment process that would ensure code quality and enable rapid iteration. The existing manual deployment workflow was error-prone and lacked automated testing, linting, and preview environments.
+
+## Task
+
+Implement a production-grade CI/CD pipeline that would:
+- Automate code quality checks (linting, type-checking, formatting)
+- Run unit and integration tests on every pull request
+- Generate preview deployments for stakeholder review
+- Enable zero-downtime production deployments on merge to main
+- Provide clear visibility into pipeline status and deployment health
+
+## Action
+
+**Pipeline Architecture & Configuration**
+- Designed a multi-stage GitHub Actions workflow with separate jobs for linting, type-checking, testing, and deployment
+- Configured ESLint with Airbnb standards, Prettier for consistent formatting, and TypeScript strict mode for type safety
+- Implemented Jest and React Testing Library for unit/integration testing with coverage thresholds
+
+**Preview & Production Deployments**
+- Leveraged Vercel's Git integration for automatic preview deployments on every PR
+- Configured production deployment to trigger only on successful merges to `main` branch
+- Added deployment status checks as required status checks in branch protection rules
+
+**Quality Gates & Observability**
+- Enforced passing tests, linting, and type-checking as mandatory merge requirements
+- Integrated bundle size analysis to prevent regressions
+- Added Slack notifications for deployment failures and successes
+- Implemented automated dependency updates via Dependabot with auto-merge for patch versions
+
+**Security & Performance**
+- Configured secret management for API keys and tokens using GitHub Environments
+- Enabled Vercel's edge caching and image optimization for optimal Core Web Vitals
+- Added security headers (CSP, HSTS, X-Frame-Options) via Next.js configuration
+
+## Result
+
+- **Deployment frequency** increased from weekly manual releases to multiple daily automated deployments
+- **Mean time to recovery (MTTR)** reduced from ~30 minutes to under 5 minutes via automated rollback capabilities
+- **Code quality metrics** improved: 95%+ test coverage maintained, zero linting errors in production builds
+- **Bundle size** reduced by 22% through automated analysis and optimization feedback loops
+- **Zero production incidents** attributed to deployment errors since pipeline launch
+- **Developer experience** significantly improved—instant feedback on PRs, one-click rollbacks, and confidence in every merge
