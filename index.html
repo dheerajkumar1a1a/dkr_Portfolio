@@ -1,3 +1,6 @@
+---
+# This empty frontmatter tells GitHub Pages to automatically process this file and read your markdown posts
+---
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,9 +9,12 @@
     <title>Dheeraj Kumar - Portfolio</title>
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; background: #f9fafb; color: #111827; }
-        .project-card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+        .project-card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .project-card h3 { margin-top: 0; color: #111827; }
+        .project-card h4 { color: #374151; margin-bottom: 0.5rem; }
+        .tech-stack { font-size: 0.875rem; color: #4b5563; background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; }
         
-        /* Admin Panel Styles - Hidden by default */
+        /* Hidden Admin Panel Styles */
         #admin-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 90%; max-width: 500px; z-index: 1000; }
         #admin-panel.visible { display: block; }
         .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
@@ -16,42 +22,63 @@
         
         input, textarea, button { width: 100%; margin-bottom: 1rem; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
         textarea { height: 150px; resize: vertical; }
-        button { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: 600; }
-        button:hover { background: #1d4ed8; }
-        .close-btn { background: #ef4444; margin-top: 0.5rem; }
+        .primary-btn { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: 600; }
+        .primary-btn:hover { background: #1d4ed8; }
+        .close-btn { background: #ef4444; color: white; border: none; cursor: pointer; font-weight: 600; margin-top: 0.5rem; }
     </style>
 </head>
 <body>
 
-    <header>
+    <header style="position: relative; margin-bottom: 3rem;">
         <h1>Dheeraj Kumar</h1>
         <p>Data Science & Automation Engineer</p>
+        
+        <!-- Visible Admin Login Button -->
+        <button id="open-admin-btn" style="position: absolute; top: 0; right: 0; width: auto; background: transparent; color: #9ca3af; border: none; cursor: pointer; font-size: 0.875rem;">Admin Login</button>
     </header>
 
     <main id="portfolio-content">
-        <!-- Live projects will be rendered here by your static site generator -->
+        <!-- GitHub Pages will automatically loop through your _posts folder and inject them here -->
+        {% for post in site.posts %}
         <div class="project-card">
-            <h3>Sample Project: Automated Leave Request System</h3>
-            <p><strong>Tech Stack:</strong> Power Apps, Power Automate, SharePoint</p>
-            <p>Built a comprehensive leave approval workflow automating requests between employees and management.</p>
+            <h3>{{ post.title }}</h3>
+            
+            <p class="tech-stack"><strong>Tech Stack:</strong> {{ post.techStack | join: ", " }}</p>
+            <p style="color: #4b5563; font-style: italic;">{{ post.summary }}</p>
+            
+            <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
+            
+            <!-- This automatically converts your AI's STAR markdown into clean HTML -->
+            <div class="markdown-body">
+                {{ post.content }}
+            </div>
         </div>
+        {% endfor %}
+
+        <!-- Fallback if no projects exist in the _posts folder yet -->
+        {% if site.posts.size == 0 %}
+        <div class="project-card">
+            <h3>No projects yet</h3>
+            <p>Use the Admin Login to submit your first project through the n8n AI pipeline.</p>
+        </div>
+        {% endif %}
     </main>
 
     <!-- Hidden Admin UI -->
     <div class="overlay" id="overlay"></div>
     <div id="admin-panel">
-        <h3>Add New Project</h3>
+        <h3 style="margin-top: 0;">Add New Project</h3>
         <p style="font-size: 0.875rem; color: #6b7280;">AI will automatically format these notes.</p>
         
         <form id="project-form">
-            <!-- Updated to your active n8n production webhook URL -->
+            <!-- Ensure this points to your active n8n production webhook URL -->
             <input type="hidden" id="webhook-url" value="https://n8n-sh-dkr.duckdns.org/webhook/portfolio-update">
             
-            <textarea id="raw-notes" placeholder="e.g., I upgraded the Android app architecture using Gradle 9.5 and AGP 9.3 to standardize the master blueprint..." required></textarea>
+            <textarea id="raw-notes" placeholder="e.g., Upgraded the Android app architecture using Gradle 9.5 and AGP 9.3..." required></textarea>
             
             <input type="password" id="secret-pass" placeholder="Admin Password" required>
             
-            <button type="submit" id="submit-btn">Process & Deploy</button>
+            <button type="submit" id="submit-btn" class="primary-btn">Process & Deploy</button>
             <button type="button" class="close-btn" id="close-admin">Cancel</button>
         </form>
         <p id="status-message" style="text-align: center; margin-top: 1rem; font-weight: bold;"></p>
@@ -63,7 +90,13 @@
         const form = document.getElementById('project-form');
         const statusMsg = document.getElementById('status-message');
 
-        // Toggle admin panel with Ctrl + Shift + A
+        // Open panel with the visible button
+        document.getElementById('open-admin-btn').addEventListener('click', () => {
+            adminPanel.classList.add('visible');
+            overlay.classList.add('visible');
+        });
+
+        // Open panel with secret shortcut (Ctrl + Shift + A)
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.shiftKey && e.key === 'A') {
                 adminPanel.classList.add('visible');
@@ -97,15 +130,13 @@
                     body: JSON.stringify(payload)
                 });
 
-                // Parse the JSON response returned by the n8n "Respond to Webhook" node
                 const result = await response.json();
 
                 if (response.ok && result.status === 'success') {
                     statusMsg.style.color = 'green';
-                    statusMsg.textContent = result.message; // Will display: "Project deployed!"
+                    statusMsg.textContent = 'Success! Reload the page in ~30 seconds to see the new project.';
                     form.reset();
                 } else {
-                    // Fallback to n8n's error message if provided, otherwise generic error
                     throw new Error(result.message || 'Authentication failed or server error.');
                 }
             } catch (error) {
