@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dheeraj Kumar - Portfolio</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; background: #f9fafb; color: #111827; }
+        .project-card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+        
+        /* Admin Panel Styles - Hidden by default */
+        #admin-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 90%; max-width: 500px; z-index: 1000; }
+        #admin-panel.visible { display: block; }
+        .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
+        .overlay.visible { display: block; }
+        
+        input, textarea, button { width: 100%; margin-bottom: 1rem; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
+        textarea { height: 150px; resize: vertical; }
+        button { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: 600; }
+        button:hover { background: #1d4ed8; }
+        .close-btn { background: #ef4444; margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Dheeraj Kumar</h1>
+        <p>Data Science & Automation Engineer</p>
+    </header>
+
+    <main id="portfolio-content">
+        <!-- Live projects will be rendered here by your static site generator -->
+        <div class="project-card">
+            <h3>Sample Project: Automated Leave Request System</h3>
+            <p><strong>Tech Stack:</strong> Power Apps, Power Automate, SharePoint</p>
+            <p>Built a comprehensive leave approval workflow automating requests between employees and management.</p>
+        </div>
+    </main>
+
+    <!-- Hidden Admin UI -->
+    <div class="overlay" id="overlay"></div>
+    <div id="admin-panel">
+        <h3>Add New Project</h3>
+        <p style="font-size: 0.875rem; color: #6b7280;">AI will automatically format these notes.</p>
+        
+        <form id="project-form">
+            <!-- Updated to your active n8n production webhook URL -->
+            <input type="hidden" id="webhook-url" value="https://n8n-sh-dkr.duckdns.org/webhook/portfolio-update">
+            
+            <textarea id="raw-notes" placeholder="e.g., I upgraded the Android app architecture using Gradle 9.5 and AGP 9.3 to standardize the master blueprint..." required></textarea>
+            
+            <input type="password" id="secret-pass" placeholder="Admin Password" required>
+            
+            <button type="submit" id="submit-btn">Process & Deploy</button>
+            <button type="button" class="close-btn" id="close-admin">Cancel</button>
+        </form>
+        <p id="status-message" style="text-align: center; margin-top: 1rem; font-weight: bold;"></p>
+    </div>
+
+    <script>
+        const adminPanel = document.getElementById('admin-panel');
+        const overlay = document.getElementById('overlay');
+        const form = document.getElementById('project-form');
+        const statusMsg = document.getElementById('status-message');
+
+        // Toggle admin panel with Ctrl + Shift + A
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+                adminPanel.classList.add('visible');
+                overlay.classList.add('visible');
+            }
+        });
+
+        document.getElementById('close-admin').addEventListener('click', () => {
+            adminPanel.classList.remove('visible');
+            overlay.classList.remove('visible');
+            statusMsg.textContent = '';
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.textContent = 'Processing with AI...';
+            submitBtn.disabled = true;
+            statusMsg.textContent = '';
+
+            const payload = {
+                notes: document.getElementById('raw-notes').value,
+                password: document.getElementById('secret-pass').value
+            };
+            const webhookUrl = document.getElementById('webhook-url').value;
+
+            try {
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                // Parse the JSON response returned by the n8n "Respond to Webhook" node
+                const result = await response.json();
+
+                if (response.ok && result.status === 'success') {
+                    statusMsg.style.color = 'green';
+                    statusMsg.textContent = result.message; // Will display: "Project deployed!"
+                    form.reset();
+                } else {
+                    // Fallback to n8n's error message if provided, otherwise generic error
+                    throw new Error(result.message || 'Authentication failed or server error.');
+                }
+            } catch (error) {
+                statusMsg.style.color = 'red';
+                statusMsg.textContent = 'Error: ' + error.message;
+            } finally {
+                submitBtn.textContent = 'Process & Deploy';
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
