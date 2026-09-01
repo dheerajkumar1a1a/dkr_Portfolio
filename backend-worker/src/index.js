@@ -146,12 +146,13 @@ Return EXACTLY this JSON shape (no markdown fences, no prose):
             model: typeof env.OLLAMA_MODEL === "string" && env.OLLAMA_MODEL.trim() ? env.OLLAMA_MODEL.trim() : "glm-4.7-flash:latest",
             format: "json",
             stream: false,
+            think: false,
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: userMessage },
             ],
           }),
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(45000),
         });
 
         if (!aiResponse.ok) {
