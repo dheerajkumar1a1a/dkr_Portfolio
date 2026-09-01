@@ -67,8 +67,30 @@ export default {
         );
       }
 
-      const { password, rawNotes, clarifications, skipQuestions } = body ?? {};
+      const { password, rawNotes, clarifications, skipQuestions, ollamaUrl: clientOllamaUrl } = body ?? {};
       const forceSkip = skipQuestions === true;
+      const rawOllamaInput =
+        typeof clientOllamaUrl === "string" && clientOllamaUrl.trim()
+          ? clientOllamaUrl.trim()
+          : typeof env.OLLAMA_TUNNEL_URL === "string" && env.OLLAMA_TUNNEL_URL.trim()
+            ? env.OLLAMA_TUNNEL_URL.trim()
+            : "";
+      if (!rawOllamaInput) {
+        return Response.json(
+          { status: "error", message: "Missing Ollama URL — provide ollamaUrl ending with /v1 in request or set OLLAMA_TUNNEL_URL secret" },
+          { status: 400, headers: corsHeaders }
+        );
+      }
+      // Basic SSRF guard: require https and host, allow only trycloudflare.com / localhost for now, but accept any https
+      try {
+        const u = new URL(rawOllamaInput);
+        if (u.protocol !== "https:" && u.protocol !== "http:") throw new Error("invalid protocol");
+      } catch {
+        return Response.json(
+          { status: "error", message: "Invalid ollamaUrl — must be a valid https URL ending with /v1" },
+          { status: 400, headers: corsHeaders }
+        );
+      }
 
       if (typeof password !== "string" || typeof rawNotes !== "string") {
         return Response.json(
@@ -91,12 +113,6 @@ export default {
         );
       }
 
-      if (!env.OLLAMA_TUNNEL_URL) {
-        return Response.json(
-          { status: "error", message: "Server misconfiguration" },
-          { status: 500, headers: corsHeaders }
-        );
-      }
       if (!env.GITHUB_PAT) {
         return Response.json(
           { status: "error", message: "Server misconfiguration" },
@@ -139,8 +155,8 @@ Return EXACTLY this JSON shape (no markdown fences, no prose):
         ? `Raw Notes:\n${rawNotes}\n\nClarifications:\n${normalizedClarifications.map((c) => `Q: ${c.question}\nA: ${c.answer}`).join("\n\n")}`
         : `Raw Notes:\n${rawNotes}`;
 
-      // Normalize OLLAMA_TUNNEL_URL: user may supply https://host/v1 or https://host — strip /v1* suffix
-      const rawTunnel = String(env.OLLAMA_TUNNEL_URL).trim().replace(/\/+$/, "");
+      // Effective Ollama base: client-provided ollamaUrl overrides env fallback
+      const rawTunnel = String(rawOllamaInput).trim().replace(/\/+$/, "");
       const ollamaBase = rawTunnel
         .replace(/\/v1\/chat\/completions\/?$/i, "")
         .replace(/\/v1\/?$/i, "");

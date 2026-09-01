@@ -12,6 +12,7 @@ type Clarification = { question: string; answer: string };
 export default function AdminPortal() {
   const [open, setOpen] = useState(false);
   const [rawNotes, setRawNotes] = useState("");
+  const [ollamaUrl, setOllamaUrl] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
@@ -130,6 +131,8 @@ export default function AdminPortal() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const trimmedOllamaUrl = ollamaUrl.trim();
+    const baseOllama = trimmedOllamaUrl ? { ollamaUrl: trimmedOllamaUrl } : {};
     const payload: Record<string, unknown> = isInterviewMode
       ? {
           password,
@@ -140,15 +143,18 @@ export default function AdminPortal() {
               answer: answers[i] ?? "",
             })
           ),
+          ...baseOllama,
         }
       : {
           password,
           rawNotes,
+          ...baseOllama,
         };
     await sendPayload(payload);
   };
 
   const handleSkip = async () => {
+    const trimmedOllamaUrl = ollamaUrl.trim();
     const payload: Record<string, unknown> = {
       password,
       rawNotes: originalNotes,
@@ -159,6 +165,7 @@ export default function AdminPortal() {
         })
       ),
       skipQuestions: true,
+      ...(trimmedOllamaUrl ? { ollamaUrl: trimmedOllamaUrl } : {}),
     };
     await sendPayload(payload);
   };
@@ -229,6 +236,16 @@ export default function AdminPortal() {
               </div>
             ))}
 
+          <input
+            type="url"
+            value={ollamaUrl}
+            onChange={(e) => setOllamaUrl(e.target.value)}
+            placeholder="Ollama URL ending with /v1 (e.g., https://...trycloudflare.com/v1) — optional, overrides server default"
+            disabled={busy}
+            className={`${inputClasses} mb-4`}
+            pattern="https://.*\/v1\/?"
+            title="Must be a https URL ending with /v1"
+          />
           <input
             type="password"
             value={password}
