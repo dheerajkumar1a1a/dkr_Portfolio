@@ -36,6 +36,11 @@ function stripFences(raw) {
     .trim();
 }
 
+function normalizeFrontmatter(md) {
+  // Ensure date is quoted "YYYY-MM-DD" — handles 2024-06-23, 2024-06-23T00:00:00.000Z, "2024-06-23T..."
+  return md.replace(/^date:\s*["']?(\d{4}-\d{2}-\d{2})[^"'\r\n]*["']?\s*$/m, 'date: "$1"');
+}
+
 export default {
   async fetch(request, env) {
     const corsHeaders = getCorsHeaders(request);
@@ -113,10 +118,10 @@ Format requirements:
 - If the input lacks key architectural details, metrics, or technical specifics, set needs_more_info: true and supply 3-5 concise clarifying questions that would unblock a STAR portfolio entry.
 - If details are sufficient, set needs_more_info: false and generate Portfolio Entry markdown with strict Frontmatter.
 Frontmatter MUST be YAML delimited by --- on its own lines, with fields:
-  title:string (kebab-free human title)
-  date:YYYY-MM-DD (use today's date if not inferrable, ISO)
-  techStack:string[] (1-8 items)
-  summary:string (one sentence, <200 chars)
+  title:string (kebab-free human title, quoted)
+  date:"YYYY-MM-DD" (quoted string, e.g. "2024-06-23" — never unquoted, never ISO datetime)
+  techStack:string[] (JSON array, 1-8 items, e.g. ["Python", "Hugo"])
+  summary:string (quoted, one sentence, <200 chars)
 Body MUST use ## Situation / ## Task / ## Action / ## Result.
 
 Return EXACTLY this JSON shape (no markdown fences, no prose):
@@ -219,13 +224,14 @@ Return EXACTLY this JSON shape (no markdown fences, no prose):
         );
       }
 
-      const finalMarkdown = typeof parsed.final_markdown === "string" ? parsed.final_markdown.trim() : "";
+      let finalMarkdown = typeof parsed.final_markdown === "string" ? parsed.final_markdown.trim() : "";
       if (!finalMarkdown || !finalMarkdown.includes("---")) {
         return Response.json(
           { status: "error", message: "AI returned malformed structured output" },
           { status: 502, headers: corsHeaders }
         );
       }
+      finalMarkdown = normalizeFrontmatter(finalMarkdown);
 
       // Server-controlled filename (Q6): ignore any LLM-suggested path
       const dateStr = new Date().toISOString().split("T")[0];

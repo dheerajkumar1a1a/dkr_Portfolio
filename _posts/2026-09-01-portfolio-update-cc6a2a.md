@@ -1,13 +1,8 @@
 ---
-title: Automated Kaggle Notebook Documentation Pipeline
-date: 2024-06-23
-techStack: [
-  "Python",
-  "Hugo",
-  "Docker",
-  "Data Scraping"
-]
-summary: Built a Python pipeline to automate documentation generation for 285 Kaggle notebooks and host the final outputs using Hugo.
+title: "Automated Kaggle Notebook Documentation Pipeline"
+date: "2024-06-23"
+techStack: ["Python", "Hugo", "Docker", "Data Scraping"]
+summary: "Built a Python pipeline to automate documentation generation for 285 Kaggle notebooks and host the final outputs using Hugo."
 ---
 
 ## Situation

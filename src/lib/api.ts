@@ -16,10 +16,15 @@ export interface Post {
 const postsDirectory = path.join(process.cwd(), "_posts");
 
 function parseFrontmatterDate(value: unknown, fallback: Date): Date {
-  if (typeof value !== "string") return fallback;
-  // Strict YYYY-MM-DD per CONTEXT.md Frontmatter
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return fallback;
-  const d = new Date(value + "T00:00:00Z");
+  let dateStr: string | null = null;
+  if (typeof value === "string") {
+    const m = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    dateStr = m ? m[1] : null;
+  } else if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    dateStr = value.toISOString().slice(0, 10);
+  }
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return fallback;
+  const d = new Date(dateStr + "T00:00:00Z");
   return Number.isNaN(d.getTime()) ? fallback : d;
 }
 

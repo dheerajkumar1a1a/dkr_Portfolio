@@ -49,11 +49,19 @@ for (const file of files) {
     failed = true;
   }
   if ("date" in data) {
-    if (typeof data.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(data.date)) {
+    let dateStr = null;
+    if (typeof data.date === "string") {
+      // Handle ISO datetime like "2024-06-23T00:00:00.000Z" → trim to YYYY-MM-DD
+      const m = data.date.match(/^(\d{4}-\d{2}-\d{2})/);
+      dateStr = m ? m[1] : null;
+    } else if (data.date instanceof Date && !Number.isNaN(data.date.getTime())) {
+      dateStr = data.date.toISOString().slice(0, 10);
+    }
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       console.error(`[validate-posts] FAIL ${file}: date must be YYYY-MM-DD string (got ${JSON.stringify(data.date)})`);
       failed = true;
     } else {
-      const d = new Date(data.date + "T00:00:00Z");
+      const d = new Date(dateStr + "T00:00:00Z");
       if (Number.isNaN(d.getTime())) {
         console.error(`[validate-posts] FAIL ${file}: date is not a valid calendar date`);
         failed = true;
