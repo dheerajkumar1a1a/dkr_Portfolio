@@ -67,7 +67,8 @@ export default {
         );
       }
 
-      const { password, rawNotes, clarifications } = body ?? {};
+      const { password, rawNotes, clarifications, skipQuestions } = body ?? {};
+      const forceSkip = skipQuestions === true;
 
       if (typeof password !== "string" || typeof rawNotes !== "string") {
         return Response.json(
@@ -112,7 +113,7 @@ export default {
             }))
         : null;
 
-      const systemPrompt = `You are a technical content compiler for a developer portfolio.
+      let systemPrompt = `You are a technical content compiler for a developer portfolio.
 Analyze the Raw Notes and optional Clarifications and produce a strict JSON response.
 Format requirements:
 - If the input lacks key architectural details, metrics, or technical specifics, set needs_more_info: true and supply 3-5 concise clarifying questions that would unblock a STAR portfolio entry.
@@ -130,6 +131,9 @@ Return EXACTLY this JSON shape (no markdown fences, no prose):
   "questions": string[] | null,
   "final_markdown": string | null
 }`;
+      if (forceSkip) {
+        systemPrompt += `\n\nCRITICAL: User has chosen to SKIP remaining clarifications. You MUST set needs_more_info=false and generate final_markdown immediately using only the available Raw Notes and any Clarifications provided (treat missing answers as N/A). Do NOT return questions. Even if information is sparse, produce a best-effort Portfolio Entry with valid Frontmatter and STAR body.`;
+      }
 
       const userMessage = normalizedClarifications
         ? `Raw Notes:\n${rawNotes}\n\nClarifications:\n${normalizedClarifications.map((c) => `Q: ${c.question}\nA: ${c.answer}`).join("\n\n")}`

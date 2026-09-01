@@ -92,38 +92,17 @@ export default function AdminPortal() {
     );
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const sendPayload = async (payload: Record<string, unknown>) => {
     if (busy) return;
     setStatus("loading");
     setMessage("");
-
-    // Canonical payload per CONTEXT.md: Raw Notes + Clarifications
-    const payload = isInterviewMode
-      ? {
-          password,
-          rawNotes: originalNotes,
-          clarifications: questions.map(
-            (question, i): Clarification => ({
-              question,
-              answer: answers[i] ?? "",
-            })
-          ),
-        }
-      : {
-          password,
-          rawNotes,
-        };
-
     try {
       const res = await fetch(WORKER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       const parsed = await parseResponse(res);
-
       if (parsed.needsAnswers && parsed.questions) {
         setQuestions(parsed.questions);
         setAnswers(new Array(parsed.questions.length).fill(""));
@@ -133,7 +112,6 @@ export default function AdminPortal() {
         setMessage("");
         return;
       }
-
       setStatus("success");
       setMessage(
         "Entry committed to GitHub. Site update will be live in 2–3 minutes following GitHub Actions build completion."
@@ -148,6 +126,41 @@ export default function AdminPortal() {
       setStatus("error");
       setMessage(err instanceof Error ? err.message : "Something went wrong.");
     }
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const payload: Record<string, unknown> = isInterviewMode
+      ? {
+          password,
+          rawNotes: originalNotes,
+          clarifications: questions.map(
+            (question, i): Clarification => ({
+              question,
+              answer: answers[i] ?? "",
+            })
+          ),
+        }
+      : {
+          password,
+          rawNotes,
+        };
+    await sendPayload(payload);
+  };
+
+  const handleSkip = async () => {
+    const payload: Record<string, unknown> = {
+      password,
+      rawNotes: originalNotes,
+      clarifications: questions.map(
+        (question, i): Clarification => ({
+          question,
+          answer: answers[i]?.trim() ? answers[i] : "N/A",
+        })
+      ),
+      skipQuestions: true,
+    };
+    await sendPayload(payload);
   };
 
   if (!open) return null;
@@ -237,6 +250,16 @@ export default function AdminPortal() {
                 ? "Submit Answers & Deploy"
                 : "Process & Deploy"}
           </button>
+          {isInterviewMode && (
+            <button
+              type="button"
+              onClick={handleSkip}
+              disabled={busy}
+              className="mt-3 w-full cursor-pointer rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-200 transition-colors hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Skip Questions &amp; Deploy Anyway
+            </button>
+          )}
           <button
             type="button"
             onClick={close}
