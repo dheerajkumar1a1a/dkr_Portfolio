@@ -1,0 +1,3 @@
+name = "portfolio-pipeline-worker"
+main = "src/index.js"
+compatibility_date = "2026-09-01"

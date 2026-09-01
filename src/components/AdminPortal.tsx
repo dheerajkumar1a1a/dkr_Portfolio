@@ -2,14 +2,16 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
-const WEBHOOK_URL =
-  "https://n8n-sh-dkr.duckdns.org/webhook/portfolio-update";
+// Canonical Edge Worker URL — deployed via wrangler deploy
+const WORKER_URL = "https://portfolio-pipeline-worker.prtf.workers.dev";
 
 type Status = "idle" | "loading" | "success" | "error";
 
+type Clarification = { question: string; answer: string };
+
 export default function AdminPortal() {
   const [open, setOpen] = useState(false);
-  const [notes, setNotes] = useState("");
+  const [rawNotes, setRawNotes] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
@@ -24,7 +26,7 @@ export default function AdminPortal() {
     setOpen(false);
     setMessage("");
     if (status === "success") {
-      setNotes("");
+      setRawNotes("");
       setPassword("");
       setQuestions([]);
       setAnswers([]);
@@ -92,25 +94,29 @@ export default function AdminPortal() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (busy) return;
     setStatus("loading");
     setMessage("");
 
-    const combinedNotes = isInterviewMode
-      ? `
-ORIGINAL PROJECT NOTES:
-${originalNotes}
-
-INTERVIEW CLARIFICATIONS & METRICS:
-${questions
-  .map((q, i) => `Question: ${q}\nAnswer: ${answers[i] || "N/A"}`)
-  .join("\n\n")}
-`.trim()
-      : notes;
-
-    const payload = { notes: combinedNotes, password };
+    // Canonical payload per CONTEXT.md: Raw Notes + Clarifications
+    const payload = isInterviewMode
+      ? {
+          password,
+          rawNotes: originalNotes,
+          clarifications: questions.map(
+            (question, i): Clarification => ({
+              question,
+              answer: answers[i] ?? "",
+            })
+          ),
+        }
+      : {
+          password,
+          rawNotes,
+        };
 
     try {
-      const res = await fetch(WEBHOOK_URL, {
+      const res = await fetch(WORKER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -121,7 +127,7 @@ ${questions
       if (parsed.needsAnswers && parsed.questions) {
         setQuestions(parsed.questions);
         setAnswers(new Array(parsed.questions.length).fill(""));
-        setOriginalNotes((prev) => (isInterviewMode ? prev : notes));
+        setOriginalNotes((prev) => (isInterviewMode ? prev : rawNotes));
         setIsInterviewMode(true);
         setStatus("idle");
         setMessage("");
@@ -129,8 +135,10 @@ ${questions
       }
 
       setStatus("success");
-      setMessage("Success! Reload the page in ~30 seconds to see your new post.");
-      setNotes("");
+      setMessage(
+        "Entry committed to GitHub. Site update will be live in 2–3 minutes following GitHub Actions build completion."
+      );
+      setRawNotes("");
       setPassword("");
       setQuestions([]);
       setAnswers([]);
@@ -175,8 +183,8 @@ ${questions
         <form onSubmit={handleSubmit}>
           {!isInterviewMode && (
             <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              value={rawNotes}
+              onChange={(e) => setRawNotes(e.target.value)}
               placeholder="e.g., Upgraded the Android app architecture using Gradle 9.5..."
               required
               disabled={busy}

@@ -1,8 +1,8 @@
+---
 title: "Hybrid ML Supply Chain Optimization: Linear Regression + Random Forest Residual Modeling"
 date: "2024-03-15"
 techStack: ["Python", "Scikit-learn", "Pandas", "NumPy", "Linear Regression", "Random Forest", "Supply Chain Analytics", "Time Series Forecasting"]
 summary: "Developed a hybrid ensemble model that feeds linear regression residuals into a random forest to capture non-linear supply chain patterns, improving forecast accuracy by 23% over baseline models."
-
 ---
 
 ## Situation

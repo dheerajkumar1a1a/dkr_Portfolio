@@ -15,6 +15,14 @@ export interface Post {
 
 const postsDirectory = path.join(process.cwd(), "_posts");
 
+function parseFrontmatterDate(value: unknown, fallback: Date): Date {
+  if (typeof value !== "string") return fallback;
+  // Strict YYYY-MM-DD per CONTEXT.md Frontmatter
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return fallback;
+  const d = new Date(value + "T00:00:00Z");
+  return Number.isNaN(d.getTime()) ? fallback : d;
+}
+
 export async function getPosts(): Promise<Post[]> {
   if (!fs.existsSync(postsDirectory)) {
     return [];
@@ -25,27 +33,57 @@ export async function getPosts(): Promise<Post[]> {
     .filter((fileName) => fileName.endsWith(".md"));
 
   const posts = await Promise.all(
-    fileNames.map(async (fileName): Promise<Post> => {
+    fileNames.map(async (fileName): Promise<Post | null> => {
       const fullPath = path.join(postsDirectory, fileName);
       const fileContents = fs.readFileSync(fullPath, "utf8");
-      const { data, content } = matter(fileContents);
-      const processedContent = await remark().use(html).process(content);
       const stats = fs.statSync(fullPath);
+
+      if (!fileContents.trimStart().startsWith("---")) {
+        console.warn(`[api] ${fileName}: missing Frontmatter delimiters "---", skipping`);
+        return null;
+      }
+
+      let data: Record<string, unknown>;
+      let content: string;
+      try {
+        const parsed = matter(fileContents);
+        data = parsed.data as Record<string, unknown>;
+        content = parsed.content;
+      } catch (err) {
+        console.warn(`[api] ${fileName}: Frontmatter parse error, skipping`, err);
+        return null;
+      }
+
+      const title = typeof data.title === "string" ? data.title.trim() : "";
+      const summary = typeof data.summary === "string" ? data.summary.trim() : "";
+      const rawDate = data.date;
+      const techStack = Array.isArray(data.techStack)
+        ? data.techStack.filter((item: unknown): item is string => typeof item === "string")
+        : [];
+
+      if (!title || !summary || techStack.length === 0) {
+        console.warn(
+          `[api] ${fileName}: missing required Frontmatter fields (title, techStack, summary), skipping`
+        );
+        return null;
+      }
+
+      const createdAt = parseFrontmatterDate(rawDate, stats.birthtime);
+
+      const processedContent = await remark().use(html).process(content);
 
       return {
         slug: fileName.replace(/\.md$/, ""),
-        title: typeof data.title === "string" ? data.title : "",
-        techStack: Array.isArray(data.techStack)
-          ? data.techStack.filter(
-              (item: unknown): item is string => typeof item === "string"
-            )
-          : [],
-        summary: typeof data.summary === "string" ? data.summary : "",
+        title,
+        techStack,
+        summary,
         contentHtml: processedContent.toString(),
-        createdAt: stats.birthtime,
+        createdAt,
       };
     })
   );
 
-  return posts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  return (posts.filter(Boolean) as Post[]).sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+  );
 }

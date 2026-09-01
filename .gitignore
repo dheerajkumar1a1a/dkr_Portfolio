@@ -5,5 +5,7 @@ build/
 next-env.d.ts
 *.tsbuildinfo
 .env*
+.dev.vars
+backend-worker/.dev.vars
 .DS_Store
 npm-debug.log*

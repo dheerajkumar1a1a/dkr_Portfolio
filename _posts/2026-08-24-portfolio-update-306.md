@@ -1,3 +1,4 @@
+---
 title: "Supply Chain Optimization with Hybrid Linear Regression and Random Forest Model"
 date: "2026-03-15"
 techStack:
@@ -7,7 +8,6 @@ techStack:
   - NumPy
   - Jupyter Notebook
 summary: "Developed a hybrid machine learning pipeline that feeds linear regression residuals into a random forest to improve supply chain demand forecasting accuracy."
-
 ---
 
 ## Situation

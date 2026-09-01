@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate Portfolio Entries
+        run: node scripts/validate-posts.mjs
+
       - name: Build Next.js site
         run: npm run build
 
