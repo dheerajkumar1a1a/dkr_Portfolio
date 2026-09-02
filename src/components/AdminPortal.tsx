@@ -21,6 +21,7 @@ export default function AdminPortal() {
   const [answers, setAnswers] = useState<string[]>([]);
   const [originalNotes, setOriginalNotes] = useState("");
   const [isInterviewMode, setIsInterviewMode] = useState(false);
+  const [history, setHistory] = useState<Clarification[]>([]);
 
   const busy = status === "loading";
 
@@ -33,6 +34,7 @@ export default function AdminPortal() {
       setQuestions([]);
       setAnswers([]);
       setOriginalNotes("");
+      setHistory([]);
       setIsInterviewMode(false);
       setStatus("idle");
     }
@@ -110,6 +112,8 @@ export default function AdminPortal() {
       });
       const parsed = await parseResponse(res);
       if (parsed.needsAnswers && parsed.questions) {
+        const sent = (payload.clarifications as Clarification[]) || [];
+        if (sent.length > 0) setHistory(sent);
         setQuestions(parsed.questions);
         setAnswers(new Array(parsed.questions.length).fill(""));
         setOriginalNotes((prev) => (isInterviewMode ? prev : rawNotes));
@@ -127,6 +131,7 @@ export default function AdminPortal() {
       setQuestions([]);
       setAnswers([]);
       setOriginalNotes("");
+      setHistory([]);
       setIsInterviewMode(false);
     } catch (err) {
       setStatus("error");
@@ -146,12 +151,15 @@ export default function AdminPortal() {
       ? {
           password,
           rawNotes: originalNotes,
-          clarifications: questions.map(
-            (question, i): Clarification => ({
-              question,
-              answer: answers[i] ?? "",
-            })
-          ),
+          clarifications: [
+            ...history,
+            ...questions.map(
+              (question, i): Clarification => ({
+                question,
+                answer: answers[i] ?? "",
+              })
+            ),
+          ],
           ...baseProvider,
         }
       : {
@@ -165,15 +173,15 @@ export default function AdminPortal() {
   const handleSkip = async () => {
     const trimmedOllamaUrl = ollamaUrl.trim();
     const trimmedOpenRouterKey = openRouterKey.trim();
+    const currentWithSkip: Clarification[] = questions.map((question, i) => ({
+      question,
+      answer: answers[i]?.trim() ? answers[i] : "N/A",
+    }));
+    const all = [...history, ...currentWithSkip];
     const payload: Record<string, unknown> = {
       password,
       rawNotes: originalNotes,
-      clarifications: questions.map(
-        (question, i): Clarification => ({
-          question,
-          answer: answers[i]?.trim() ? answers[i] : "N/A",
-        })
-      ),
+      clarifications: all,
       skipQuestions: true,
       ...(trimmedOllamaUrl ? { ollamaUrl: trimmedOllamaUrl } : {}),
       ...(trimmedOpenRouterKey ? { openRouterKey: trimmedOpenRouterKey } : {}),
@@ -208,6 +216,11 @@ export default function AdminPortal() {
           <div className="mb-5 rounded-lg border border-accent/20 bg-accent/10 px-4 py-3 text-xs leading-relaxed text-blue-200">
             Interview mode — {questions.length} question
             {questions.length === 1 ? "" : "s"} pending.
+            {history.length > 0 && (
+              <span className="mt-1 block text-[11px] text-blue-300/80">
+                {history.length} answer{history.length === 1 ? "" : "s"} already collected — skipping will still deploy with all {history.length + questions.length} Q&As as context.
+              </span>
+            )}
           </div>
         )}
 
