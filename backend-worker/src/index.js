@@ -227,11 +227,11 @@ Return EXACTLY this JSON shape (no markdown fences, no prose):
           (aiData && typeof aiData.response === "string" && aiData.response) ||
           "";
       } else {
-        // OpenRouter fallback — primary is Ollama, this is secondary
+        // OpenRouter fallback — primary is Ollama, this is secondary — use Free Router to always get a free model
         const openRouterModel =
           typeof env.OPENROUTER_MODEL === "string" && env.OPENROUTER_MODEL.trim()
             ? env.OPENROUTER_MODEL.trim()
-            : "meta-llama/llama-3.1-8b-instruct:free";
+            : "openrouter/free";
         try {
           const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
