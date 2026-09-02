@@ -55,6 +55,10 @@ export default function AdminPortal() {
     setAnswers((prev) => prev.map((answer, i) => (i === index ? value : answer)));
   };
 
+  const toggleSkipSingle = (index: number) => {
+    setAnswers((prev) => prev.map((a, i) => (i === index ? (a === "N/A" ? "" : "N/A") : a)));
+  };
+
   const parseResponse = async (
     res: Response
   ): Promise<{ needsAnswers: boolean; questions?: string[] }> => {
@@ -221,27 +225,47 @@ export default function AdminPortal() {
           )}
 
           {isInterviewMode &&
-            questions.map((question, index) => (
-              <div key={`${index}-${question}`} className="mb-4">
-                <label
-                  htmlFor={`interview-question-${index}`}
-                  className="mb-1.5 block text-xs font-medium leading-relaxed text-zinc-200"
-                >
-                  <span className="mr-1 text-accent">{index + 1}.</span>
-                  {question}
-                </label>
-                <textarea
-                  id={`interview-question-${index}`}
-                  value={answers[index] ?? ""}
-                  onChange={(e) => setAnswer(index, e.target.value)}
-                  placeholder="Your answer…"
-                  required
-                  disabled={busy}
-                  rows={2}
-                  className={`${inputClasses} resize-y`}
-                />
-              </div>
-            ))}
+            questions.map((question, index) => {
+              const isSkipped = answers[index] === "N/A";
+              return (
+                <div key={`${index}-${question}`} className="mb-4">
+                  <label
+                    htmlFor={`interview-question-${index}`}
+                    className="mb-1.5 block text-xs font-medium leading-relaxed text-zinc-200"
+                  >
+                    <span className="mr-1 text-accent">{index + 1}.</span>
+                    {question}
+                  </label>
+                  <div className="flex gap-2">
+                    <textarea
+                      id={`interview-question-${index}`}
+                      value={answers[index] ?? ""}
+                      onChange={(e) => setAnswer(index, e.target.value)}
+                      placeholder={isSkipped ? "Skipped — will deploy as N/A" : "Your answer…"}
+                      disabled={busy || isSkipped}
+                      rows={2}
+                      className={`${inputClasses} flex-1 resize-y disabled:opacity-60`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => toggleSkipSingle(index)}
+                      disabled={busy}
+                      title={isSkipped ? "Undo skip for this question" : "Skip this question and deploy as N/A"}
+                      className={`shrink-0 self-start rounded-lg border px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50 ${
+                        isSkipped
+                          ? "border-zinc-600 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                          : "border-amber-500/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20"
+                      }`}
+                    >
+                      {isSkipped ? "Undo" : "Skip"}
+                    </button>
+                  </div>
+                  {isSkipped && (
+                    <p className="mt-1 text-[10px] text-amber-200/70">This question will be sent as “N/A”.</p>
+                  )}
+                </div>
+              );
+            })}
 
           <input
             type="url"
