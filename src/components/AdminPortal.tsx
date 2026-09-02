@@ -13,6 +13,7 @@ export default function AdminPortal() {
   const [open, setOpen] = useState(false);
   const [rawNotes, setRawNotes] = useState("");
   const [ollamaUrl, setOllamaUrl] = useState("");
+  const [openRouterKey, setOpenRouterKey] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
@@ -132,7 +133,11 @@ export default function AdminPortal() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmedOllamaUrl = ollamaUrl.trim();
-    const baseOllama = trimmedOllamaUrl ? { ollamaUrl: trimmedOllamaUrl } : {};
+    const trimmedOpenRouterKey = openRouterKey.trim();
+    const baseProvider = {
+      ...(trimmedOllamaUrl ? { ollamaUrl: trimmedOllamaUrl } : {}),
+      ...(trimmedOpenRouterKey ? { openRouterKey: trimmedOpenRouterKey } : {}),
+    };
     const payload: Record<string, unknown> = isInterviewMode
       ? {
           password,
@@ -143,18 +148,19 @@ export default function AdminPortal() {
               answer: answers[i] ?? "",
             })
           ),
-          ...baseOllama,
+          ...baseProvider,
         }
       : {
           password,
           rawNotes,
-          ...baseOllama,
+          ...baseProvider,
         };
     await sendPayload(payload);
   };
 
   const handleSkip = async () => {
     const trimmedOllamaUrl = ollamaUrl.trim();
+    const trimmedOpenRouterKey = openRouterKey.trim();
     const payload: Record<string, unknown> = {
       password,
       rawNotes: originalNotes,
@@ -166,6 +172,7 @@ export default function AdminPortal() {
       ),
       skipQuestions: true,
       ...(trimmedOllamaUrl ? { ollamaUrl: trimmedOllamaUrl } : {}),
+      ...(trimmedOpenRouterKey ? { openRouterKey: trimmedOpenRouterKey } : {}),
     };
     await sendPayload(payload);
   };
@@ -240,12 +247,24 @@ export default function AdminPortal() {
             type="url"
             value={ollamaUrl}
             onChange={(e) => setOllamaUrl(e.target.value)}
-            placeholder="Ollama URL ending with /v1 (e.g., https://...trycloudflare.com/v1) — optional, overrides server default"
+            placeholder="Ollama URL ending with /v1 (e.g., https://...trycloudflare.com/v1) — primary, overrides server default"
             disabled={busy}
             className={`${inputClasses} mb-4`}
             pattern="https://.*\/v1\/?"
             title="Must be a https URL ending with /v1"
           />
+          <input
+            type="password"
+            value={openRouterKey}
+            onChange={(e) => setOpenRouterKey(e.target.value)}
+            placeholder="OpenRouter API key (sk-or-...) — optional fallback if no Ollama URL"
+            disabled={busy}
+            className={`${inputClasses} mb-4`}
+          />
+          <p className="mb-4 text-[10px] leading-relaxed text-zinc-500">
+            Primary: <span className="text-zinc-300">Ollama URL</span> (self-hosted, preferred). Fallback:{" "}
+            <span className="text-zinc-300">OpenRouter key</span> — used only if Ollama URL is empty.
+          </p>
           <input
             type="password"
             value={password}

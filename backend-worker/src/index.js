@@ -67,7 +67,14 @@ export default {
         );
       }
 
-      const { password, rawNotes, clarifications, skipQuestions, ollamaUrl: clientOllamaUrl } = body ?? {};
+      const {
+        password,
+        rawNotes,
+        clarifications,
+        skipQuestions,
+        ollamaUrl: clientOllamaUrl,
+        openRouterKey: clientOpenRouterKey,
+      } = body ?? {};
       const forceSkip = skipQuestions === true;
       const rawOllamaInput =
         typeof clientOllamaUrl === "string" && clientOllamaUrl.trim()
@@ -75,21 +82,33 @@ export default {
           : typeof env.OLLAMA_TUNNEL_URL === "string" && env.OLLAMA_TUNNEL_URL.trim()
             ? env.OLLAMA_TUNNEL_URL.trim()
             : "";
-      if (!rawOllamaInput) {
+      const rawOpenRouterKey =
+        typeof clientOpenRouterKey === "string" && clientOpenRouterKey.trim()
+          ? clientOpenRouterKey.trim()
+          : typeof env.OPENROUTER_API_KEY === "string" && env.OPENROUTER_API_KEY.trim()
+            ? env.OPENROUTER_API_KEY.trim()
+            : "";
+      const useOllama = !!rawOllamaInput;
+      const useOpenRouter = !useOllama && !!rawOpenRouterKey;
+      if (!useOllama && !useOpenRouter) {
         return Response.json(
-          { status: "error", message: "Missing Ollama URL — provide ollamaUrl ending with /v1 in request or set OLLAMA_TUNNEL_URL secret" },
+          {
+            status: "error",
+            message: "Missing AI provider — provide ollamaUrl ending with /v1 (primary) or openRouterKey (fallback) in request, or set OLLAMA_TUNNEL_URL / OPENROUTER_API_KEY secret",
+          },
           { status: 400, headers: corsHeaders }
         );
       }
-      // Basic SSRF guard: require https and host, allow only trycloudflare.com / localhost for now, but accept any https
-      try {
-        const u = new URL(rawOllamaInput);
-        if (u.protocol !== "https:" && u.protocol !== "http:") throw new Error("invalid protocol");
-      } catch {
-        return Response.json(
-          { status: "error", message: "Invalid ollamaUrl — must be a valid https URL ending with /v1" },
-          { status: 400, headers: corsHeaders }
-        );
+      if (useOllama) {
+        try {
+          const u = new URL(rawOllamaInput);
+          if (u.protocol !== "https:" && u.protocol !== "http:") throw new Error("invalid protocol");
+        } catch {
+          return Response.json(
+            { status: "error", message: "Invalid ollamaUrl — must be a valid https URL ending with /v1" },
+            { status: 400, headers: corsHeaders }
+          );
+        }
       }
 
       if (typeof password !== "string" || typeof rawNotes !== "string") {
@@ -155,53 +174,105 @@ Return EXACTLY this JSON shape (no markdown fences, no prose):
         ? `Raw Notes:\n${rawNotes}\n\nClarifications:\n${normalizedClarifications.map((c) => `Q: ${c.question}\nA: ${c.answer}`).join("\n\n")}`
         : `Raw Notes:\n${rawNotes}`;
 
-      // Effective Ollama base: client-provided ollamaUrl overrides env fallback
-      const rawTunnel = String(rawOllamaInput).trim().replace(/\/+$/, "");
-      const ollamaBase = rawTunnel
-        .replace(/\/v1\/chat\/completions\/?$/i, "")
-        .replace(/\/v1\/?$/i, "");
-      const ollamaUrl = `${ollamaBase}/api/chat`;
+      let aiData = null;
+      let rawContent = "";
 
-      let aiData;
-      try {
-        const aiResponse = await fetch(ollamaUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: typeof env.OLLAMA_MODEL === "string" && env.OLLAMA_MODEL.trim() ? env.OLLAMA_MODEL.trim() : "glm-4.7-flash:latest",
-            format: "json",
-            stream: false,
-            think: false,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userMessage },
-            ],
-          }),
-          signal: AbortSignal.timeout(45000),
-        });
-
-        if (!aiResponse.ok) {
-          const text = await aiResponse.text().catch(() => "");
-          throw new Error(`ollama_${aiResponse.status}:${text.slice(0, 300)}`);
+      if (useOllama) {
+        const rawTunnel = String(rawOllamaInput).trim().replace(/\/+$/, "");
+        const ollamaBase = rawTunnel
+          .replace(/\/v1\/chat\/completions\/?$/i, "")
+          .replace(/\/v1\/?$/i, "");
+        const ollamaUrl = `${ollamaBase}/api/chat`;
+        try {
+          const aiResponse = await fetch(ollamaUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: typeof env.OLLAMA_MODEL === "string" && env.OLLAMA_MODEL.trim() ? env.OLLAMA_MODEL.trim() : "glm-4.7-flash:latest",
+              format: "json",
+              stream: false,
+              think: false,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userMessage },
+              ],
+            }),
+            signal: AbortSignal.timeout(45000),
+          });
+          if (!aiResponse.ok) {
+            const text = await aiResponse.text().catch(() => "");
+            throw new Error(`ollama_${aiResponse.status}:${text.slice(0, 300)}`);
+          }
+          aiData = await aiResponse.json();
+        } catch (err) {
+          const msg = err && err.name === "TimeoutError" ? "timeout" : String(err && err.message ? err.message : err);
+          if (msg.includes("timeout") || msg.includes("ollama_") || msg.includes("fetch failed") || msg.includes("Failed to fetch")) {
+            return Response.json(
+              { status: "error", message: "AI service unavailable — tunnel offline" },
+              { status: 502, headers: corsHeaders }
+            );
+          }
+          throw err;
         }
-
-        aiData = await aiResponse.json();
-      } catch (err) {
-        const msg = err && err.name === "TimeoutError" ? "timeout" : String(err && err.message ? err.message : err);
-        if (msg.includes("timeout") || msg.includes("ollama_") || msg.includes("fetch failed") || msg.includes("Failed to fetch")) {
-          return Response.json(
-            { status: "error", message: "AI service unavailable — tunnel offline" },
-            { status: 502, headers: corsHeaders }
-          );
+        rawContent =
+          (aiData && aiData.message && typeof aiData.message.content === "string" && aiData.message.content) ||
+          (aiData && typeof aiData.response === "string" && aiData.response) ||
+          "";
+      } else {
+        // OpenRouter fallback — primary is Ollama, this is secondary
+        const openRouterModel =
+          typeof env.OPENROUTER_MODEL === "string" && env.OPENROUTER_MODEL.trim()
+            ? env.OPENROUTER_MODEL.trim()
+            : "nvidia/nemotron-3-nano-30b-a3b:free";
+        try {
+          const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${rawOpenRouterKey}`,
+              "HTTP-Referer": "https://dheerajkumar1a1a.github.io/dkr_Portfolio/",
+              "X-Title": "dkr_Portfolio Pipeline",
+            },
+            body: JSON.stringify({
+              model: openRouterModel,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userMessage },
+              ],
+              response_format: { type: "json_object" },
+            }),
+            signal: AbortSignal.timeout(45000),
+          });
+          if (!orRes.ok) {
+            const text = await orRes.text().catch(() => "");
+            throw new Error(`openrouter_${orRes.status}:${text.slice(0, 400)}`);
+          }
+          aiData = await orRes.json();
+        } catch (err) {
+          const msg = err && err.name === "TimeoutError" ? "timeout" : String(err && err.message ? err.message : err);
+          if (
+            msg.includes("timeout") ||
+            msg.includes("openrouter_") ||
+            msg.includes("fetch failed") ||
+            msg.includes("Failed to fetch")
+          ) {
+            return Response.json(
+              { status: "error", message: "AI service unavailable — OpenRouter unreachable" },
+              { status: 502, headers: corsHeaders }
+            );
+          }
+          throw err;
         }
-        throw err;
+        rawContent =
+          (aiData &&
+            aiData.choices &&
+            aiData.choices[0] &&
+            aiData.choices[0].message &&
+            typeof aiData.choices[0].message.content === "string" &&
+            aiData.choices[0].message.content) ||
+          (aiData && typeof aiData.response === "string" && aiData.response) ||
+          "";
       }
-
-      // Ollama /api/chat returns { message: { content: string }, ... }
-      const rawContent =
-        (aiData && aiData.message && typeof aiData.message.content === "string" && aiData.message.content) ||
-        (aiData && typeof aiData.response === "string" && aiData.response) ||
-        "";
 
       if (!rawContent) {
         return Response.json(
