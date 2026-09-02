@@ -76,20 +76,28 @@ export default {
         openRouterKey: clientOpenRouterKey,
       } = body ?? {};
       const forceSkip = skipQuestions === true;
-      const rawOllamaInput =
-        typeof clientOllamaUrl === "string" && clientOllamaUrl.trim()
-          ? clientOllamaUrl.trim()
-          : typeof env.OLLAMA_TUNNEL_URL === "string" && env.OLLAMA_TUNNEL_URL.trim()
-            ? env.OLLAMA_TUNNEL_URL.trim()
-            : "";
-      const rawOpenRouterKey =
-        typeof clientOpenRouterKey === "string" && clientOpenRouterKey.trim()
-          ? clientOpenRouterKey.trim()
-          : typeof env.OPENROUTER_API_KEY === "string" && env.OPENROUTER_API_KEY.trim()
-            ? env.OPENROUTER_API_KEY.trim()
-            : "";
-      const useOllama = !!rawOllamaInput;
-      const useOpenRouter = !useOllama && !!rawOpenRouterKey;
+      const clientOllama = typeof clientOllamaUrl === "string" ? clientOllamaUrl.trim() : "";
+      const clientOR = typeof clientOpenRouterKey === "string" ? clientOpenRouterKey.trim() : "";
+      const envOllama = typeof env.OLLAMA_TUNNEL_URL === "string" ? env.OLLAMA_TUNNEL_URL.trim() : "";
+      const envOR = typeof env.OPENROUTER_API_KEY === "string" ? env.OPENROUTER_API_KEY.trim() : "";
+      let rawOllamaInput = "";
+      let rawOpenRouterKey = "";
+      let useOllama = false;
+      let useOpenRouter = false;
+      if (clientOllama) {
+        rawOllamaInput = clientOllama;
+        useOllama = true;
+      } else if (clientOR) {
+        // Client explicitly chose OpenRouter — honor it even if env Ollama exists (fixes “AI service unavailable” when env tunnel offline but key valid)
+        rawOpenRouterKey = clientOR;
+        useOpenRouter = true;
+      } else if (envOllama) {
+        rawOllamaInput = envOllama;
+        useOllama = true;
+      } else if (envOR) {
+        rawOpenRouterKey = envOR;
+        useOpenRouter = true;
+      }
       if (!useOllama && !useOpenRouter) {
         return Response.json(
           {
@@ -223,7 +231,7 @@ Return EXACTLY this JSON shape (no markdown fences, no prose):
         const openRouterModel =
           typeof env.OPENROUTER_MODEL === "string" && env.OPENROUTER_MODEL.trim()
             ? env.OPENROUTER_MODEL.trim()
-            : "nvidia/nemotron-3-nano-30b-a3b:free";
+            : "meta-llama/llama-3.1-8b-instruct:free";
         try {
           const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
@@ -250,14 +258,23 @@ Return EXACTLY this JSON shape (no markdown fences, no prose):
           aiData = await orRes.json();
         } catch (err) {
           const msg = err && err.name === "TimeoutError" ? "timeout" : String(err && err.message ? err.message : err);
-          if (
-            msg.includes("timeout") ||
-            msg.includes("openrouter_") ||
-            msg.includes("fetch failed") ||
-            msg.includes("Failed to fetch")
-          ) {
+          if (msg.includes("timeout") || msg.includes("fetch failed") || msg.includes("Failed to fetch")) {
             return Response.json(
-              { status: "error", message: "AI service unavailable — OpenRouter unreachable" },
+              { status: "error", message: "AI service unavailable — OpenRouter timeout" },
+              { status: 502, headers: corsHeaders }
+            );
+          }
+          if (msg.includes("openrouter_")) {
+            const m = msg.match(/openrouter_(\d+):?(.*)/);
+            const code = m ? m[1] : "unknown";
+            const detail = m && m[2] ? m[2].slice(0, 200).trim() : "";
+            let hint = "";
+            if (code === "401") hint = " — check OpenRouter API key (sk-or-...)";
+            else if (code === "402") hint = " — OpenRouter insufficient credits";
+            else if (code === "429") hint = " — OpenRouter rate limited";
+            else if (code === "404") hint = " — model not found, check OPENROUTER_MODEL";
+            return Response.json(
+              { status: "error", message: `OpenRouter error ${code}${hint}${detail ? ": " + detail : ""}` },
               { status: 502, headers: corsHeaders }
             );
           }
