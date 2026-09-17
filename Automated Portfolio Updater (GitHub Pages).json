@@ -1,0 +1,385 @@
+{
+  "name": "Automated Portfolio Updater (GitHub Pages)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio-update",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "82cdfe46-05fe-4f10-a26f-fda91c13ff25",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        64
+      ],
+      "webhookId": "custom-portfolio-webhook-id",
+      "retryOnFail": true,
+      "executeOnce": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.password }}",
+              "value2": "DheerajSecure123"
+            }
+          ]
+        }
+      },
+      "id": "312b39b7-4ae6-499b-8110-ad7ed3bafa71",
+      "name": "Verify Password",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Extract the Markdown text from final_markdown (fallback to output/text)\nconst aiContent = $input.first().json.final_markdown || $input.first().json.output || $input.first().json.text;\n\n// 2. Generate a dynamic filename using today's date and a random ID\nconst date = new Date().toISOString().split('T')[0];\nconst randomId = Math.floor(Math.random() * 1000);\nconst filePath = `_posts/${date}-portfolio-update-${randomId}.md`;\n\n// 3. Convert the Markdown text into Base64 (Required by GitHub API)\nconst base64Content = Buffer.from(aiContent).toString('base64');\n\n// 4. Output the exact variables needed for the HTTP Request node\nreturn {\n  filename: filePath,\n  content: base64Content\n};"
+      },
+      "id": "8c15ed84-6603-4080-8b20-e6420841eaf3",
+      "name": "Prepare GitHub Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/dheerajkumar1a1a/dkr_Portfolio/contents/{{ $json.filename }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GITHUB_PAT"
+            },
+            {
+              "name": "User-Agent",
+              "value": "n8n-automation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "feat: add new AI formatted project via n8n"
+            },
+            {
+              "name": "content",
+              "value": "={{ $json.content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e4dd0c8d-4311-4295-bd2b-06d713b838dc",
+      "name": "Commit to GitHub",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1024,
+        16
+      ],
+      "credentials": {
+        "githubApi": {
+          "id": "N8YA0ICA8uuk0Jlk",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"Invalid Password\"\n}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "ebfdb425-8ac7-44d6-891c-88a5634f774e",
+      "name": "Reject Request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        64,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        80,
+        48
+      ],
+      "id": "2022b7c6-9e81-418d-a738-618963493e9e",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "qnzBEnP3B82rtg07",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.notes }}",
+        "options": {
+          "systemMessage": "You are an expert technical interviewer and portfolio writer. The user will provide raw notes about an engineering project.\n\nStep 1: Evaluate\nAnalyze the notes. Do you have enough specific technical detail, metrics, and context to write a comprehensive STAR (Situation, Task, Action, Result) portfolio entry?\n\nStep 2: Output JSON\nYou MUST return a valid, raw JSON object ONLY. Do not wrap the JSON in markdown code blocks (like ```json). Do not include any conversational intro or outro text. Use this exact schema:\n{\n\"needs_more_info\": boolean,\n\"questions\": [\"string\", \"string\", \"string\"],\n\"final_markdown\": \"string or null\"\n}\n\nIf needs_more_info is true, provide 3 to 5 highly specific, clarifying questions in the questions array to extract the missing metrics, challenges, or architecture details. Set final_markdown to null.\nIf needs_more_info is false, set questions to an empty array and provide the fully formatted MDX string in final_markdown."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        0,
+        -192
+      ],
+      "id": "5afcfc8c-6443-4a44-821e-a5fc713d0c9a",
+      "name": "AI Agent",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\": \"success\", \"message\": \"Project deployed!\"}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1248,
+        16
+      ],
+      "id": "a8a4b43a-e6a2-470f-8e59-1a8a40654edd",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.needs_more_info }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    },
+                    "id": "c5e4a45b-9ac9-4891-b79c-90fb5a68edf7"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ad6ef6eb-282b-481e-93a8-586ddd912971",
+                    "leftValue": "={{ $json.needs_more_info }}",
+                    "rightValue": false,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        576,
+        -80
+      ],
+      "id": "bc0fa906-cafc-441d-b3c4-74ff61f7a2e0",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Grab the raw output from the AI Agent node (checking common output keys)\nlet rawOutput = $input.first().json.output || $input.first().json.text || $input.first().json;\n\n// 2. If it's already a clean object, just return it directly\nif (typeof rawOutput === 'object' && rawOutput !== null) {\n    return rawOutput;\n}\n\n// 3. Otherwise, clean up stringified JSON (handling \\n, backticks, or extra spaces)\nlet cleanedOutput = rawOutput\n    .replace(/```json/g, \"\")\n    .replace(/```/g, \"\")\n    .trim();\n\n// 4. Parse the cleaned string into an actual JSON object\nconst parsedJson = JSON.parse(cleanedOutput);\n\n// 5. Output the structured object for the Switch node\nreturn parsedJson;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        -80
+      ],
+      "id": "41032777-0428-4826-b9b1-3348b97aeb8c",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: \"needs_answers\", questions: $json.questions }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        800,
+        -176
+      ],
+      "id": "dbc53134-026f-4470-b4fc-5968920812f0",
+      "name": "Respond to Webhook1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify Password",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Password": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare GitHub Payload": {
+      "main": [
+        [
+          {
+            "node": "Commit to GitHub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Commit to GitHub": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare GitHub Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "eb11de70-8c87-4dbb-b182-1d398c6a01ad",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fbe4b5be1a800f9036a69e18e67c7722592bc89eb1374d709ba3eefd8f4c981d"
+  },
+  "nodeGroups": [],
+  "id": "d1TSZ3xGnVuzFi13",
+  "tags": []
+}
