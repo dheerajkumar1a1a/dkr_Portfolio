@@ -439,3 +439,13 @@ dkr_Portfolio/
 ---
 
 *Built with Next.js 15, Cloudflare Workers, Ollama, and GitHub Pages — grilled via `CONTEXT.md` + `docs/adr`.*
+
+## ChatGPT → Blog Publishing
+
+This repository also serves as the public archive for approved business, technology and engineering articles.
+
+- Publishing workflow: [docs/CHATGPT-BLOG-WORKFLOW.md](docs/CHATGPT-BLOG-WORKFLOW.md)
+- Reusable ChatGPT editorial prompt: [prompts/chat-to-blog.md](prompts/chat-to-blog.md)
+- Public site: https://dheerajkumar1a1a.github.io/dkr_Portfolio/
+
+For a new chat, ask ChatGPT to draft an article using the prompt, review it, and explicitly approve before any GitHub commit. Historical ChatGPT exports are parsed locally using the private companion workflow; never put raw conversations or drafts in this public repository.
