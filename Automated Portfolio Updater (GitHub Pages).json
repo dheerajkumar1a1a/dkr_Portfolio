@@ -27,7 +27,7 @@
           "string": [
             {
               "value1": "={{ $json.body.password }}",
-              "value2": "DheerajSecure123"
+              "value2": "REPLACE_WITH_A_NEW_SECRET_BEFORE_IMPORT"
             }
           ]
         }
@@ -368,7 +368,7 @@
       ]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
