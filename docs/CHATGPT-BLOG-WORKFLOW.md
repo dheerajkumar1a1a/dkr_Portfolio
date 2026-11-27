@@ -20,6 +20,8 @@ The current site expects the front matter contract below. Keep it compatible unl
 
 A prompt is an instruction, not a native slash command. You can type `/blog` as your own shorthand for the instruction above.
 
+**Important:** the existing on-site Admin Portal was originally designed for STAR-style developer/project portfolio entries and depends on its Cloudflare Worker and AI-provider secrets. For general business blogs, use the ChatGPT editorial prompt plus a direct GitHub file commit (or the GitHub web editor); do not assume the old Admin Portal is the correct path.
+
 ## 2. Required article format
 
 Every published article must use this exact front matter shape:
