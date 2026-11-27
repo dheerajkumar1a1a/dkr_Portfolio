@@ -128,7 +128,7 @@ npm run dev          # http://localhost:3000/dkr_Portfolio
 # in another shell:
 cd backend-worker && npm ci
 # create backend-worker/.dev.vars (gitignored) for wrangler dev:
-# ADMIN_PASSWORD=dkr1a1a
+# ADMIN_PASSWORD=replace-with-a-unique-random-secret
 # GITHUB_PAT=ghp_...
 # OLLAMA_TUNNEL_URL=https://...trycloudflare.com
 # OLLAMA_MODEL=glm-4.7-flash:latest
@@ -151,9 +151,9 @@ compatibility_date = "2026-09-01"
 
 ```powershell
 # PowerShell — each `secret put` triggers an automatic redeploy
-"dkr1a1a" | npx wrangler secret put ADMIN_PASSWORD
+npx wrangler secret put ADMIN_PASSWORD  # enter a unique random secret at the interactive prompt
 "ghp_..." | npx wrangler secret put GITHUB_PAT
-"https://driver-pleased-gzip-deployment.trycloudflare.com" | npx wrangler secret put OLLAMA_TUNNEL_URL
+"https://YOUR_NAMED_TUNNEL_HOST" | npx wrangler secret put OLLAMA_TUNNEL_URL
 "glm-4.7-flash:latest" | npx wrangler secret put OLLAMA_MODEL
 npx wrangler secret list  # verify
 ```
@@ -191,7 +191,7 @@ Repo **Settings → Pages → Source: GitHub Actions** (not `Deploy from branch`
 - **Phase 1 — Raw Notes:**
   - `Ollama URL ending with /v1` — optional, e.g. `https://abc.trycloudflare.com/v1`. If empty, worker uses `OLLAMA_TUNNEL_URL` secret. Useful to point at a colleague’s tunnel or a new model without redeploy.
   - `Raw Notes` textarea — paste free-text (e.g. “Upgraded Android app to Gradle 9.5…”).
-  - `Admin Password` — `dkr1a1a` (or your secret).
+  - `Admin Password` — enter the secret stored in Cloudflare; never commit or share it.
   - `Process & Deploy` → `POST` to `WORKER_URL`.
 - **Phase 2 — Interview:**
   - Worker returns `needs_answers` + 3–5 questions (e.g. “Which Gradle version? Metrics?”).
@@ -312,7 +312,7 @@ npm run dev              # next dev (basePath still /dkr_Portfolio)
 ```bash
 curl -i -X POST https://portfolio-pipeline-worker.prtf.workers.dev \
   -H "Content-Type: application/json" -H "Origin: https://dheerajkumar1a1a.github.io" \
-  -d '{"password":"dkr1a1a","rawNotes":"Built RAG with Qdrant, 20ms p95","ollamaUrl":"https://driver-pleased-gzip-deployment.trycloudflare.com/v1"}'
+  -d '{"password":"YOUR_ADMIN_PASSWORD","rawNotes":"Built RAG with Qdrant, 20ms p95","ollamaUrl":"https://YOUR_NAMED_TUNNEL_HOST/v1"}'
 ```
 
 ---
@@ -324,7 +324,7 @@ curl -i -X POST https://portfolio-pipeline-worker.prtf.workers.dev \
 ```bash
 cd backend-worker
 npx wrangler deploy                 # needs CLOUDFLARE_API_TOKEN (Workers Edit)
-npx wrangler secret put ADMIN_PASSWORD   # then paste dkr1a1a
+npx wrangler secret put ADMIN_PASSWORD   # enter a unique random secret at the prompt
 npx wrangler secret put GITHUB_PAT       # ghp_... fine-grained
 npx wrangler secret put OLLAMA_TUNNEL_URL # https://...trycloudflare.com (optional if always client-provided)
 npx wrangler secret put OLLAMA_MODEL      # glm-4.7-flash:latest
@@ -409,7 +409,7 @@ dkr_Portfolio/
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `401 Unauthorized` | `ADMIN_PASSWORD` mismatch vs `wrangler secret` | `echo -n "dkr1a1a" | wrangler secret put ADMIN_PASSWORD` then redeploy |
+| `401 Unauthorized` | `ADMIN_PASSWORD` mismatch vs `wrangler secret` | `wrangler secret put ADMIN_PASSWORD  # enter the rotated secret interactively` then redeploy |
 | `502 tunnel offline` / `AbortError` | `cloudflared` not running, quick tunnel expired, or `glm-4.7-flash` >45s | Restart `ollama serve` + `cloudflared tunnel --url http://localhost:11434`, check `OLLAMA_TUNNEL_URL` ends with `/v1` (worker strips), or increase `AbortSignal.timeout` |
 | `ollama_404 model not found` | `OLLAMA_MODEL` not on host (`ollama list`) | `ollama pull glm-4.7-flash:latest` or `wrangler secret put OLLAMA_MODEL -- llm:tag` + client `ollamaUrl` override |
 | `validate-posts FAIL date must be YYYY-MM-DD` | LLM emitted `2024-06-23T...` or `js-yaml` Date | Fixed by `normalizeFrontmatter:39` + validator `Date` handling; redeploy worker, ensure `date: "YYYY-MM-DD"` quoted in prompt |
